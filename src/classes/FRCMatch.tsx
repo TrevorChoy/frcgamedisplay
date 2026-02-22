@@ -1,73 +1,106 @@
 import type { DocumentSnapshot, SnapshotOptions } from "firebase/firestore";
-import { blueAllianceColor, redAllianceColor, WinnerState } from "../Constants";
-import { FRCAlliance } from "./FRCAlliance";
+import { blueAllianceColor, redAllianceColor, WinnerState, winnerStateColors } from "../Constants";
+import { AllianceConverter, FRCAlliance } from "./FRCAlliance";
 import { FRCTeam, TeamConverter } from "./FRCTeam";
 
 export class FRCMatch {
-    private red1: FRCTeam;
-    private red2: FRCTeam;
-    private red3: FRCTeam;
-    private blue1: FRCTeam;
-    private blue2: FRCTeam;
-    private blue3: FRCTeam;
-    private name: string
-    private winnerState: WinnerState;
+    private redAlliance: FRCAlliance;
+    private blueAlliance: FRCAlliance;
+    private name: string;
+    private played: boolean;
 
-    constructor(red1: FRCTeam, red2: FRCTeam, red3: FRCTeam, blue1: FRCTeam, blue2: FRCTeam, blue3: FRCTeam, name: string, winnerState = WinnerState.NOTPLAYED){
-        this.red1 = red1;
-        this.red2 = red2;
-        this.red3 = red3;
-        this.blue1 = blue1;
-        this.blue2 = blue2;
-        this.blue3 = blue3;
+    constructor(redAlliance: FRCAlliance, blueAlliance: FRCAlliance, name: string, played = false){
+        this.redAlliance = redAlliance;
+        this.blueAlliance = blueAlliance;
         this.name = name;
-        this.winnerState = winnerState;
+        this.played = played;
     }
 
     getRed1(){
-        return this.red1;
+        if(this.redAlliance === undefined) console.log("red alliance undefined");
+        return this.redAlliance.getTeam1();
     }
     getRed2(){
-        return this.red2;
+        return this.redAlliance.getTeam2();
     }
     getRed3(){
-        return this.red3
+        return this.redAlliance.getTeam3();
     }
     getBlue1(){
-        return this.blue1;
+        return this.blueAlliance.getTeam1();
     }
     getBlue2(){
-        return this.blue2;
+        return this.blueAlliance.getTeam2();
     }
     getBlue3(){
-        return this.blue3;
+        return this.blueAlliance.getTeam3();
     }
-    getWinnerState(){
-        return this.winnerState;
-    }  
 
     getName(){
         return this.name;
     }
-    /** @param winnerState the state representing which alliance won. (RED, BLUE, or TIE)  a default value of NOTPLAYED is used for matches not yet played*/
-    setWinner(winnerState: WinnerState){
-        this.winnerState = winnerState;
+
+    getWinnerState(): WinnerState{
+        if(!this.played) return WinnerState.NOTPLAYED;
+        if(this.redAlliance.getTotalPoints() > this.blueAlliance.getTotalPoints())
+            return WinnerState.RED;
+        else if(this.blueAlliance.getTotalPoints() > this.redAlliance.getTotalPoints())
+            return WinnerState.BLUE;
+        else
+            return WinnerState.TIE;
     }
+
+    getRedRP(){
+        var winRPs = 0;
+        if(this.getWinnerState() === WinnerState.RED) winRPs = 3;
+        else if(this.getWinnerState() === WinnerState.TIE) winRPs = 1;
+        return (this.redAlliance.getEnergizedRP() ? 1 : 0)
+          + (this.redAlliance.getSuperchargedRP() ? 1 : 0)
+          + (this.redAlliance.getTraversalRP() ? 1 : 0)
+          + winRPs
+    }
+
+    getBlueRP(){
+        var winRPs = 0;
+        if(this.getWinnerState() === WinnerState.BLUE) winRPs = 3;
+        else if(this.getWinnerState() === WinnerState.TIE) winRPs = 1;
+        return (this.blueAlliance.getEnergizedRP() ? 1 : 0)
+          + (this.blueAlliance.getSuperchargedRP() ? 1 : 0)
+          + (this.blueAlliance.getTraversalRP() ? 1 : 0)
+          + winRPs
+    }
+
     /** red if red won, blue if blue won and gray if tie or not played yet 
      * @return the color representative of the winner of the match in hex
     */
-    getColor(){
-        return this.winnerState.color;
+    getColor() : string{
+        return winnerStateColors[this.getWinnerState()].color;
     }
 
-    /** returns a new Alliance object(no points just red alliance teams and color) */
     getRedAlliance(){
-        return new FRCAlliance(redAllianceColor, this.red1, this.red2, this.red3);
+        return this.redAlliance;
     }
 
-    /** returns a new Alliance object(no points just blue alliance teams and color) */
     getBlueAlliance(){
-        return new FRCAlliance(blueAllianceColor, this.blue1, this.blue2, this.blue3);
+        return this.blueAlliance;
+    }
+
+    withRedAlliance(redAlliance: FRCAlliance){
+        const newMatch = new FRCMatch(redAlliance, this.blueAlliance, this.name, this.played);
+        return newMatch;
+    }
+
+    withBlueAlliance(blueAlliance: FRCAlliance){
+        const newMatch = new FRCMatch(this.redAlliance, blueAlliance, this.name, this.played);
+        return newMatch;
+    }
+
+    getPlayed(){
+        return this.played;
+    }
+
+    setPlayed(played: boolean){
+        this.played = played;
     }
 }
 
@@ -75,27 +108,9 @@ export class FRCMatch {
 export const MatchConverter = {
     toFirestore: (match: FRCMatch) => {
         return {
-            red1: TeamConverter.toFirestore(match.getRed1()),
-            red2: TeamConverter.toFirestore(match.getRed2()),
-            red3: TeamConverter.toFirestore(match.getRed3()),
-            blue1: TeamConverter.toFirestore(match.getBlue1()),
-            blue2: TeamConverter.toFirestore(match.getBlue2()),
-            blue3: TeamConverter.toFirestore(match.getBlue3()),
-            name: match.getName(),
-            winnerState: match.getWinnerState(),
+            redAlliance: AllianceConverter.toFirestore(match.getRedAlliance()),
+            blueAlliance: AllianceConverter.toFirestore(match.getBlueAlliance()),
+            played: match.getPlayed(),
         };
     },
-    fromFirestore: (snapshot: DocumentSnapshot, options : SnapshotOptions) => {
-        const matchData = snapshot.data(options);
-        if(matchData)
-            return new FRCMatch(
-                new FRCTeam(matchData.red1.teamName, matchData.red1.teamColor, matchData.red1.totalRP, matchData.red1.matchesPlayed, matchData.red1.numQMs), 
-                new FRCTeam(matchData.red2.teamName, matchData.red2.teamColor, matchData.red2.totalRP, matchData.red2.matchesPlayed, matchData.red2.numQMs), 
-                new FRCTeam(matchData.red3.teamName, matchData.red3.teamColor, matchData.red3.totalRP, matchData.red3.matchesPlayed, matchData.red3.numQMs), 
-                new FRCTeam(matchData.blue1.teamName, matchData.blue1.teamColor, matchData.blue1.totalRP, matchData.blue1.matchesPlayed, matchData.blue1.numQMs), 
-                new FRCTeam(matchData.blue2.teamName, matchData.blue2.teamColor, matchData.blue2.totalRP, matchData.blue2.matchesPlayed, matchData.blue2.numQMs), 
-                new FRCTeam(matchData.blue3.teamName, matchData.blue3.teamColor, matchData.blue3.totalRP, matchData.blue3.matchesPlayed, matchData.blue3.numQMs), 
-                matchData.name, 
-                matchData.winnerState);
-    }
 };

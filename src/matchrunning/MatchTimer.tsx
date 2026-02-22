@@ -1,7 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { AUTOLENGTH, ENDGAMETIME, MatchState, PAUSELENGTH, TELEOPLENGTH } from "../Constants";
 
-export default function MatchTimer() {
+type MatchTimerProps = {
+  onFinished: () => void;
+};
+
+export default function MatchTimer({ onFinished } : MatchTimerProps) {
   const [matchState, setMatchState] = useState<MatchState>(MatchState.IDLE);
   const [timeRemaining, setTimeRemaining] = useState(0);
 
@@ -55,6 +59,7 @@ export default function MatchTimer() {
 
     if (matchState === MatchState.FINISHED) {
       teleopEndRef.current?.play();
+      onFinished();
     }
   }, [matchState]);
 

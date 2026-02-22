@@ -1,5 +1,7 @@
+import { FRCAlliance } from "../classes/FRCAlliance";
 import type { FRCGame } from "../classes/FRCGame";
 import { FRCMatch } from "../classes/FRCMatch";
+import { WinnerState, winnerStateColors } from "../Constants";
 import { shuffleArray } from "./ShuffleArray";
 
 /** @param game the FRC game to generate matches for*/
@@ -31,7 +33,9 @@ export function generateQMs(game: FRCGame): FRCMatch[]{
         for(let i = 0; i < selected.length; i++){
             selected[i].incrementNumQMs();
         }
-        qmMatches.push(new FRCMatch(selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], "qm" + (qmMatches.length + 1)));
+        const redAlliance = new FRCAlliance(winnerStateColors[WinnerState.RED].color, selected[0], selected[1], selected[2]);
+        const blueAlliance = new FRCAlliance(winnerStateColors[WinnerState.BLUE].color, selected[3], selected[4], selected[5]);
+        qmMatches.push(new FRCMatch(redAlliance, blueAlliance,  "qm" + (qmMatches.length + 1)));
     }
     return qmMatches;
 }

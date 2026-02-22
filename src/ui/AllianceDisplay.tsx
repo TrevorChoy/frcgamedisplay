@@ -25,9 +25,9 @@ export const AllianceDisplay: React.FC<Props> = ({ frcAlliance, endScreen = fals
 
         {endScreen &&(
           <div>
-            <h3>{"Fuels: " + frcAlliance.getAutoFuels() + frcAlliance.getTeleopFuels()}</h3>
-            <h3>{"Climb: " + frcAlliance.getAutoClimbState().points + frcAlliance.getEndgameClimbState().points}</h3>
-            <h3>{"Fouls: " + frcAlliance.getFouls() + frcAlliance.getTechFouls()}</h3>
+            <h3>{"Fuels: " + (frcAlliance.getAutoFuels() + frcAlliance.getTeleopFuels())}</h3>
+            <h3>{"Climb: " + (frcAlliance.getAutoClimbPoints() + frcAlliance.getEndgameClimbPoints())}</h3>
+            <h3>{"Fouls: " + (frcAlliance.getFouls() + frcAlliance.getTechFouls())}</h3>
           </div>
         )}
     </div>

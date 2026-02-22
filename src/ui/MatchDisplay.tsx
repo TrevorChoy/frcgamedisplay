@@ -18,7 +18,7 @@ export const MatchDisplay: React.FC<Props> = ({ frcMatch}) => {
         <TeamDisplay frcTeam={frcMatch.getBlue1()}></TeamDisplay>
         <TeamDisplay frcTeam={frcMatch.getBlue2()}></TeamDisplay>
         <TeamDisplay frcTeam={frcMatch.getBlue3()}></TeamDisplay>
-        <h3> winner </h3>
+        <h3> {frcMatch.getWinnerState()} </h3>
     </div>
   );
 };

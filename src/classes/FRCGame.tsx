@@ -1,6 +1,7 @@
 import type { DocumentSnapshot, SnapshotOptions } from "firebase/firestore";
 import { FRCMatch, MatchConverter } from "./FRCMatch";
 import { FRCTeam, TeamConverter } from "./FRCTeam"
+import { AllianceConverter } from "./FRCAlliance";
 
 export class FRCGame{
     private teams: FRCTeam[];
@@ -8,7 +9,7 @@ export class FRCGame{
     private numQMs: number;
     private currentQM: number;
 
-    constructor(teams?: FRCTeam[], qmMatches?: FRCMatch[], numQMs?: number, currentQM = 1){
+    constructor(teams?: FRCTeam[], qmMatches?: FRCMatch[], numQMs?: number, currentQM?: number){
         console.log("frcgame constructor");
         if(teams !== undefined)
             this.teams = teams;
@@ -20,14 +21,18 @@ export class FRCGame{
             this.qmMatches = []
         if(numQMs !== undefined)
             this.numQMs = numQMs;
-        else
+        else{
             this.numQMs = 0;
-
-        this.currentQM = currentQM;
+        }
+        if(currentQM !== undefined)
+            this.currentQM = currentQM;
+        else{
+            this.currentQM = 1;
+        }
     }
 
     withTestTeams(){
-        const newGame = new FRCGame([], this.qmMatches, this.numQMs);
+        const newGame = new FRCGame([], this.qmMatches, this.numQMs, this.currentQM);
         newGame.teams = [...this.teams, 
             new FRCTeam("CardinalBotics", "#690000"),
             new FRCTeam("Highlander Robotics", "#510485"),
@@ -43,14 +48,14 @@ export class FRCGame{
     /** returns a new FRCTeam object (thanks alot react) with the new team added if the team name is blank returns the current game*/
     withTeam(team: FRCTeam): FRCGame {
         if(team.getTeamName() === "") return this;
-        const newGame = new FRCGame([], this.qmMatches, this.numQMs);
+        const newGame = new FRCGame([], this.qmMatches, this.numQMs, this.currentQM);
         newGame.teams = [...this.teams, team];
         return newGame;
     }
 
     /** returns a new FRCTeam object (thanks alot react) with the specified team removed(if it exists) */
     withTeamRemovedAtIndex(index: number): FRCGame{
-        const newGame = new FRCGame([], this.qmMatches, this.numQMs);
+        const newGame = new FRCGame([], this.qmMatches, this.numQMs, this.currentQM);
         newGame.teams = this.teams.filter((_, i) => i !== index);
         console.log("new game: " + newGame.getTeams());
         return newGame;
@@ -60,9 +65,26 @@ export class FRCGame{
      * @param qmMatches the qualification matches to be used in the game
      */
     withQMMatches(qmMatches: FRCMatch[]){
-        const newGame = new FRCGame(this.teams, [], this.numQMs);
+        const newGame = new FRCGame(this.teams, [], this.numQMs, this.currentQM);
         newGame.qmMatches = qmMatches;
         return newGame;
+    }
+
+    withUpdatedCurrentMatch(qmMatch: FRCMatch){
+        const newGame = new FRCGame(this.teams, this.qmMatches, this.numQMs, this.currentQM);
+        newGame.qmMatches[this.currentQM - 1] = qmMatch;
+        return newGame;
+    }
+
+    iterateQM(){
+        const newGame = new FRCGame(this.teams, this.qmMatches, this.numQMs, this.currentQM);
+        if(this.currentQM < this.qmMatches.length) newGame.currentQM = newGame.currentQM + 1;
+        console.log("newgame currentqm: " + newGame.getCurrentQMNumber());
+        return newGame;
+    }
+
+    getCurrentQMMatch(){
+        return this.qmMatches[this.currentQM - 1];
     }
 
     /** returns the array of qualification matches in the game */
@@ -90,7 +112,7 @@ export class FRCGame{
     }
 
     withQM(qm: FRCMatch, index: number){
-        const newGame = new FRCGame(this.teams, this.qmMatches, this.numQMs);
+        const newGame = new FRCGame(this.teams, this.qmMatches, this.numQMs, this.currentQM);
         newGame.qmMatches[index] = qm;
         return newGame;
     }
@@ -107,11 +129,18 @@ export class FRCGame{
             </div>
         );
     }
+
+    calculateTeamPoints(){
+        this.qmMatches.forEach((match) => {
+
+        })
+    }
 }
 
 // Firestore data converter
 export const GameConverter = {
     toFirestore: (game: FRCGame) => {
+        console.log("frcgame tofirestore current qm number: " + game.getCurrentQMNumber())
         return {
             teams: game.getTeams().map(team => TeamConverter.toFirestore(team)),
             qmMatches: game.getQMMatches().map(match => MatchConverter.toFirestore(match)),
@@ -127,17 +156,17 @@ export const GameConverter = {
             new FRCTeam(teamData.teamName, teamData.teamColor, teamData.totalRP, teamData.matchesPlayed, teamData.numQMs)
         );
 
+        console.log(teams);
+
         const qmMatches = (data.qmMatches ?? []).map((matchData: any) =>
             new FRCMatch(
-                new FRCTeam(matchData.red1.teamName, matchData.red1.teamColor, matchData.red1.totalRP, matchData.red1.matchesPlayed, matchData.red1.numQMs), 
-                new FRCTeam(matchData.red2.teamName, matchData.red2.teamColor, matchData.red2.totalRP, matchData.red2.matchesPlayed, matchData.red2.numQMs), 
-                new FRCTeam(matchData.red3.teamName, matchData.red3.teamColor, matchData.red3.totalRP, matchData.red3.matchesPlayed, matchData.red3.numQMs), 
-                new FRCTeam(matchData.blue1.teamName, matchData.blue1.teamColor, matchData.blue1.totalRP, matchData.blue1.matchesPlayed, matchData.blue1.numQMs), 
-                new FRCTeam(matchData.blue2.teamName, matchData.blue2.teamColor, matchData.blue2.totalRP, matchData.blue2.matchesPlayed, matchData.blue2.numQMs), 
-                new FRCTeam(matchData.blue3.teamName, matchData.blue3.teamColor, matchData.blue3.totalRP, matchData.blue3.matchesPlayed, matchData.blue3.numQMs), 
+                AllianceConverter.fromFirestore(matchData.redAlliance, teams),
+                AllianceConverter.fromFirestore(matchData.blueAlliance, teams),
                 matchData.name, 
-                matchData.winnerState)
+                matchData.played)
         );
+
+        console.log("current QM from firebase data: " + data.currentQM);
 
         return new FRCGame(
             teams,
